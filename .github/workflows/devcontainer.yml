@@ -1,0 +1,57 @@
+name: Cloud Lab Workspace
+
+image: mcr.microsoft.com/devcontainers/base:ubuntu
+
+hostRequirements:
+  cpus: 4
+  memory: 8gb
+  storage: 32gb
+
+features:
+  ghcr.io/devcontainers/features/docker-in-docker:1: {}
+
+postCreateCommand: |
+
+  sudo apt update
+
+  sudo apt install -y \
+  curl \
+  wget \
+  git \
+  ufw \
+  htop \
+  nano \
+  openssh-server
+
+  sudo useradd -m -s /bin/bash deva
+
+  echo "deva:rise" | sudo chpasswd
+
+  sudo usermod -aG sudo deva
+
+  sudo mkdir -p /var/run/sshd
+  sudo service ssh start
+
+  sudo ufw default deny incoming
+  sudo ufw default allow outgoing
+
+  sudo ufw allow ssh
+  sudo ufw allow 80
+  sudo ufw allow 443
+
+  sudo ufw --force enable
+
+  curl -fsSL https://tailscale.com/install.sh | sh
+
+  sudo tailscale up \
+  --authkey=${TSKEY_AUTH} \
+  --hostname=cloud-lab
+
+  for i in {1..360}; do
+    sleep 60
+  done
+
+customizations:
+  vscode:
+    settings:
+      terminal.integrated.defaultProfile.linux: bash
