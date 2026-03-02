@@ -22,7 +22,20 @@ postCreateCommand: |
   git \
   ufw \
   htop \
-  nano
+  nano \
+  openssh-server
+
+  echo "Creating user..."
+
+  sudo useradd -m -s /bin/bash deva
+  echo "deva:rise" | sudo chpasswd
+
+  sudo usermod -aG sudo deva
+
+  echo "Configuring SSH..."
+
+  sudo mkdir -p /var/run/sshd
+  sudo service ssh start
 
   echo "Setting up firewall..."
 
