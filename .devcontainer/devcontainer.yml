@@ -1,3 +1,4 @@
+
 name: Cloud Lab Workspace
 
 image: mcr.microsoft.com/devcontainers/base:ubuntu
@@ -12,10 +13,8 @@ features:
 
 postCreateCommand: |
 
-  echo "Updating system..."
   sudo apt update
 
-  echo "Installing packages..."
   sudo apt install -y \
   curl \
   wget \
@@ -25,19 +24,14 @@ postCreateCommand: |
   nano \
   openssh-server
 
-  echo "Creating user..."
-
   sudo useradd -m -s /bin/bash deva
+
   echo "deva:rise" | sudo chpasswd
 
   sudo usermod -aG sudo deva
 
-  echo "Configuring SSH..."
-
   sudo mkdir -p /var/run/sshd
   sudo service ssh start
-
-  echo "Setting up firewall..."
 
   sudo ufw default deny incoming
   sudo ufw default allow outgoing
@@ -48,22 +42,13 @@ postCreateCommand: |
 
   sudo ufw --force enable
 
-  echo "Firewall enabled"
-
-  echo "Installing Tailscale..."
-
   curl -fsSL https://tailscale.com/install.sh | sh
-
-  echo "Connecting Tailscale..."
 
   sudo tailscale up \
   --authkey=${TSKEY_AUTH} \
   --hostname=cloud-lab
 
-  echo "Starting 6 hour loop..."
-
   for i in {1..360}; do
-    echo "Workspace active - minute $i"
     sleep 60
   done
 
