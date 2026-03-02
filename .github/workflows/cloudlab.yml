@@ -1,40 +1,55 @@
-name: CloudLab Runner
+name: Ultimate CloudLab
 
 on:
+
   workflow_dispatch:
 
+  schedule:
+    - cron: "0 */6 * * *"
+
 jobs:
+
   cloudlab:
 
     runs-on: ubuntu-latest
 
+    timeout-minutes: 360
+
     steps:
 
-    - name: Update
-      run: sudo apt update
-
-    - name: Install SSH
+    - name: Update System
       run: |
-        sudo apt install -y openssh-server curl
+        sudo apt update
+
+    - name: Install Packages
+      run: |
+        sudo apt install -y \
+        curl \
+        wget \
+        git \
+        htop \
+        nano \
+        openssh-server
 
     - name: Create User
       run: |
-        sudo useradd -m deva || true
+        sudo useradd -m -s /bin/bash deva
         echo "deva:rise" | sudo chpasswd
         sudo usermod -aG sudo deva
 
-    - name: Configure SSH
+    - name: Enable SSH Password Login
       run: |
 
+        sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+        sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+        sudo service ssh restart
+
+    - name: Start SSH
+      run: |
         sudo mkdir -p /var/run/sshd
-
-        echo "PasswordAuthentication yes" | sudo tee -a /etc/ssh/sshd_config
-
-        echo "PermitRootLogin yes" | sudo tee -a /etc/ssh/sshd_config
-
-        sudo /usr/sbin/sshd
-
-        sudo ss -tlnp
+        sudo service ssh start
 
     - name: Install Tailscale
       run: |
@@ -43,16 +58,26 @@ jobs:
     - name: Connect Tailscale
       run: |
         sudo tailscale up \
-        --authkey=${{ secrets.TSKEY_AUTH }}
+        --authkey=${{ secrets.TSKEY_AUTH }} \
+        --hostname=cloud-lab
 
-    - name: Show Info
+    - name: Show IP
       run: |
-
         echo "Tailscale IP:"
         tailscale ip
 
-        echo "SSH Ports:"
-        sudo ss -tlnp
+    - name: Keep Server Alive
+      run: |
+        for i in {1..360}
+        do
+          echo "Server running minute $i"
+          sleep 60
+        done
 
-    - name: Keep Alive
-      run: sleep 21600
+    - name: Restart Workflow
+      run: |
+
+        curl -X POST \
+        -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+        https://api.github.com/repos/${{ github.repository }}/actions/workflows/cloudlab.yml/dispatches \
+        -d '{"ref":"main"}'
