@@ -1,0 +1,64 @@
+name: CloudLab Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cloudlab:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Update system
+      run: |
+        sudo apt update
+
+    - name: Install packages
+      run: |
+        sudo apt install -y \
+        curl \
+        wget \
+        git \
+        ufw \
+        htop \
+        nano \
+        openssh-server
+
+    - name: Create user
+      run: |
+        sudo useradd -m -s /bin/bash deva
+        echo "deva:rise" | sudo chpasswd
+        sudo usermod -aG sudo deva
+
+    - name: Start SSH
+      run: |
+        sudo mkdir -p /var/run/sshd
+        sudo service ssh start
+
+    - name: Setup Firewall
+      run: |
+        sudo ufw default deny incoming
+        sudo ufw default allow outgoing
+        sudo ufw allow ssh
+        sudo ufw allow 80
+        sudo ufw allow 443
+        sudo ufw --force enable
+
+    - name: Install Tailscale
+      run: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+
+    - name: Connect Tailscale
+      run: |
+        sudo tailscale up \
+        --authkey=${{ secrets.TSKEY_AUTH }} \
+        --hostname=cloud-lab
+
+    - name: Keep Alive 6 Hours
+      run: |
+        for i in {1..360}
+        do
+          echo "Running minute $i"
+          sleep 60
+        done
