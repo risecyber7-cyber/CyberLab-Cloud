@@ -1,36 +1,73 @@
-# This is a basic workflow to help you get started with Actions
+name: Cloud Lab Workspace
 
-name: CI
+image: mcr.microsoft.com/devcontainers/base:ubuntu
 
-# Controls when the workflow will run
-on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+hostRequirements:
+  cpus: 4
+  memory: 8gb
+  storage: 32gb
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+features:
+  ghcr.io/devcontainers/features/docker-in-docker:1: {}
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+postCreateCommand: |
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+  echo "Updating system..."
+  sudo apt update
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+  echo "Installing packages..."
+  sudo apt install -y \
+  curl \
+  wget \
+  git \
+  ufw \
+  htop \
+  nano \
+  openssh-server
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+  echo "Creating user..."
+
+  sudo useradd -m -s /bin/bash deva
+  echo "deva:rise" | sudo chpasswd
+
+  sudo usermod -aG sudo deva
+
+  echo "Configuring SSH..."
+
+  sudo mkdir -p /var/run/sshd
+  sudo service ssh start
+
+  echo "Setting up firewall..."
+
+  sudo ufw default deny incoming
+  sudo ufw default allow outgoing
+
+  sudo ufw allow ssh
+  sudo ufw allow 80
+  sudo ufw allow 443
+
+  sudo ufw --force enable
+
+  echo "Firewall enabled"
+
+  echo "Installing Tailscale..."
+
+  curl -fsSL https://tailscale.com/install.sh | sh
+
+  echo "Connecting Tailscale..."
+
+  sudo tailscale up \
+  --authkey=${TSKEY_AUTH} \
+  --hostname=cloud-lab
+
+  echo "Starting 6 hour loop..."
+
+  for i in {1..360}; do
+    echo "Workspace active - minute $i"
+    sleep 60
+  done
+
+customizations:
+  vscode:
+    settings:
+      terminal.integrated.defaultProfile.linux: bash
