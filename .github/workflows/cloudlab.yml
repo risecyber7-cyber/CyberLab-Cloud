@@ -10,23 +10,16 @@ jobs:
 
     steps:
 
-    - name: Update system
-      run: |
-        sudo apt update
+    - name: Update
+      run: sudo apt update
 
-    - name: Install packages
+    - name: Install SSH
       run: |
-        sudo apt install -y \
-        curl \
-        wget \
-        git \
-        htop \
-        nano \
-        openssh-server
+        sudo apt install -y openssh-server curl
 
-    - name: Create user
+    - name: Create User
       run: |
-        sudo useradd -m -s /bin/bash deva || true
+        sudo useradd -m deva || true
         echo "deva:rise" | sudo chpasswd
         sudo usermod -aG sudo deva
 
@@ -35,11 +28,9 @@ jobs:
 
         sudo mkdir -p /var/run/sshd
 
-        sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+        echo "PasswordAuthentication yes" | sudo tee -a /etc/ssh/sshd_config
 
-        sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-
-        sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+        echo "PermitRootLogin yes" | sudo tee -a /etc/ssh/sshd_config
 
         sudo /usr/sbin/sshd
 
@@ -52,18 +43,16 @@ jobs:
     - name: Connect Tailscale
       run: |
         sudo tailscale up \
-        --authkey=${{ secrets.TSKEY_AUTH }} \
-        --hostname=cloud-lab
+        --authkey=${{ secrets.TSKEY_AUTH }}
 
-    - name: Show Tailscale IP
+    - name: Show Info
       run: |
+
+        echo "Tailscale IP:"
         tailscale ip
-        ip a
 
-    - name: Keep Alive 6 Hours
-      run: |
-        for i in {1..360}
-        do
-          echo "Running minute $i"
-          sleep 60
-        done
+        echo "SSH Ports:"
+        sudo ss -tlnp
+
+    - name: Keep Alive
+      run: sleep 21600
