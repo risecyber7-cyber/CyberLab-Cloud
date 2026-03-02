@@ -19,22 +19,27 @@ jobs:
 
     - name: Update System
       run: |
-        sudo apt update
+        sudo apt update -y
 
-    - name: Install Packages
+    - name: Install Core Packages
       run: |
         sudo apt install -y \
         curl \
         wget \
         git \
-        htop \
         nano \
+        htop \
+        net-tools \
+        iproute2 \
         openssh-server
 
     - name: Create User
       run: |
-        sudo useradd -m -s /bin/bash deva
+
+        sudo useradd -m -s /bin/bash deva || true
+
         echo "deva:rise" | sudo chpasswd
+
         sudo usermod -aG sudo deva
 
     - name: Enable SSH Password Login
@@ -44,37 +49,92 @@ jobs:
 
         sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
 
-        sudo service ssh restart
-
     - name: Start SSH
       run: |
+
         sudo mkdir -p /var/run/sshd
+
         sudo service ssh start
+
+        sleep 3
+
+        sudo ss -tlnp
 
     - name: Install Tailscale
       run: |
+
         curl -fsSL https://tailscale.com/install.sh | sh
+
+    - name: Start Tailscale
+      run: |
+
+        sudo tailscaled &
+
+        sleep 5
 
     - name: Connect Tailscale
       run: |
+
         sudo tailscale up \
         --authkey=${{ secrets.TSKEY_AUTH }} \
         --hostname=cloud-lab
 
-    - name: Show IP
+    - name: Show Network Info
       run: |
-        echo "Tailscale IP:"
+
+        echo "====== IP INFO ======"
+
         tailscale ip
+
+        ip a
+
+        echo "====== PORTS ======"
+
+        ss -tlnp
+
+    - name: Auto Heal SSH
+      run: |
+
+        while true
+        do
+
+        if ! pgrep sshd > /dev/null
+        then
+
+        echo "Restarting SSH"
+
+        sudo service ssh start
+
+        fi
+
+        sleep 60
+
+        done &
+
+    - name: CPU Stress Test
+      run: |
+
+        yes > /dev/null &
+        yes > /dev/null &
 
     - name: Keep Server Alive
       run: |
+
         for i in {1..360}
+
         do
-          echo "Server running minute $i"
-          sleep 60
+
+        echo "CloudLab Running Minute $i"
+
+        date
+
+        uptime
+
+        sleep 60
+
         done
 
-    - name: Restart Workflow
+    - name: Auto Restart Workflow
       run: |
 
         curl -X POST \
