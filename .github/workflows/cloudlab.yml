@@ -20,30 +20,30 @@ jobs:
         curl \
         wget \
         git \
-        ufw \
         htop \
         nano \
         openssh-server
 
     - name: Create user
       run: |
-        sudo useradd -m -s /bin/bash deva
+        sudo useradd -m -s /bin/bash deva || true
         echo "deva:rise" | sudo chpasswd
         sudo usermod -aG sudo deva
 
-    - name: Start SSH
+    - name: Configure SSH
       run: |
-        sudo mkdir -p /var/run/sshd
-        sudo service ssh start
 
-    - name: Setup Firewall
-      run: |
-        sudo ufw default deny incoming
-        sudo ufw default allow outgoing
-        sudo ufw allow ssh
-        sudo ufw allow 80
-        sudo ufw allow 443
-        sudo ufw --force enable
+        sudo mkdir -p /var/run/sshd
+
+        sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+        sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+        sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+        sudo /usr/sbin/sshd
+
+        sudo ss -tlnp
 
     - name: Install Tailscale
       run: |
@@ -54,6 +54,11 @@ jobs:
         sudo tailscale up \
         --authkey=${{ secrets.TSKEY_AUTH }} \
         --hostname=cloud-lab
+
+    - name: Show Tailscale IP
+      run: |
+        tailscale ip
+        ip a
 
     - name: Keep Alive 6 Hours
       run: |
